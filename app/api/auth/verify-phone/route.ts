@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless"
 
+const OTP_WEBHOOK_URL = "https://whatsapp-finance-agent-dg5mi7z5va-uc.a.run.app/otp/send"
+
 export async function POST(request: Request) {
   try {
     const { phoneNumber } = await request.json()
@@ -24,7 +26,43 @@ export async function POST(request: Request) {
       return Response.json({ error: "Número de teléfono no registrado en el sistema" }, { status: 401 })
     }
 
-    return Response.json({ success: true })
+    // Send OTP via WhatsApp webhook
+    // The webhook generates and stores the OTP, then sends it via WhatsApp
+    const phoneWithCountry = normalizedPhone.startsWith("51") ? normalizedPhone : `51${normalizedPhone}`
+    
+    try {
+      const webhookResponse = await fetch(OTP_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone_number: phoneWithCountry,
+        }),
+      })
+
+      if (!webhookResponse.ok) {
+        const errorText = await webhookResponse.text()
+        console.error("OTP webhook failed:", errorText)
+        return Response.json({ 
+          error: "Error al enviar el código. Intenta de nuevo." 
+        }, { status: 500 })
+      }
+
+      const webhookData = await webhookResponse.json()
+      console.log("OTP sent successfully:", { phone: phoneWithCountry, success: webhookData.success })
+
+    } catch (webhookError) {
+      console.error("OTP webhook error:", webhookError)
+      return Response.json({ 
+        error: "Error al enviar el código por WhatsApp. Intenta de nuevo." 
+      }, { status: 500 })
+    }
+
+    return Response.json({ 
+      success: true,
+      message: "Código enviado por WhatsApp"
+    })
   } catch (error) {
     console.error("Phone verification error:", error)
     return Response.json({ error: "Error al verificar el teléfono" }, { status: 500 })

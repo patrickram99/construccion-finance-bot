@@ -15,6 +15,7 @@ export function LoginForm() {
   const [step, setStep] = useState<"phone" | "code">("phone")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +40,8 @@ export function LoginForm() {
         throw new Error(data.error || "Error al verificar el teléfono")
       }
 
-      // Proceed to code entry
+      // Show success message and proceed to code entry
+      setSuccessMessage("📱 Te enviamos un código por WhatsApp")
       setStep("code")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al procesar el teléfono")
@@ -130,25 +132,32 @@ export function LoginForm() {
             setStep("phone")
             setError("")
             setCode("")
+            setSuccessMessage("")
           }}
           className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 mb-2"
         >
           ← Cambiar teléfono
         </button>
 
+        {successMessage && (
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-600 dark:text-emerald-400">
+            {successMessage}
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Código de Verificación
           </label>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-            Ingresa el código que recibiste en {phoneNumber}
+            Ingresa el código de 6 dígitos que recibiste en WhatsApp
           </p>
           <Input
             type="text"
             placeholder="000000"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            maxLength="6"
+            maxLength={6}
             className="text-center text-2xl tracking-widest h-12 font-mono"
             required
           />
