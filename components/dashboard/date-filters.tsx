@@ -16,59 +16,97 @@ interface DateFiltersProps {
 
 export function DateFilters({ onDateRangeChange }: DateFiltersProps) {
   const [showCustom, setShowCustom] = useState(false)
-  const [customRange, setCustomRange] = useState<DateRange | null>(null)
+  const [customFrom, setCustomFrom] = useState<string>("")
+  const [customTo, setCustomTo] = useState<string>("")
   const [activePreset, setActivePreset] = useState<string | null>(null)
 
   const handlePreset = (preset: string) => {
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    let from = new Date(today)
-    const to = new Date(today)
-    to.setHours(23, 59, 59, 999)
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    let from = new Date(todayStart)
+    const to = new Date(todayStart)
 
     switch (preset) {
       case "today":
+        // from and to are already set to today
         break
       case "week":
-        from = new Date(today)
+        // Go back to start of week (Sunday)
         from.setDate(from.getDate() - from.getDay())
         break
       case "month":
+        // Go to start of month
         from = new Date(today.getFullYear(), today.getMonth(), 1)
         break
       case "year":
+        // Go to start of year
         from = new Date(today.getFullYear(), 0, 1)
         break
     }
 
     setActivePreset(preset)
     setShowCustom(false)
+    setCustomFrom("")
+    setCustomTo("")
     onDateRangeChange({ from, to })
   }
 
-  const handleCustomRange = (type: "from" | "to", value: string) => {
-    const date = new Date(value)
-    const newRange = customRange || {
-      from: new Date(),
-      to: new Date(),
-    }
-
-    if (type === "from") {
-      newRange.from = date
-    } else {
-      newRange.to = date
-      newRange.to.setHours(23, 59, 59, 999)
-    }
-
-    setCustomRange(newRange)
+  const handleCustomFrom = (value: string) => {
+    setCustomFrom(value)
     setActivePreset(null)
-    onDateRangeChange(newRange)
+
+    if (value && customTo) {
+      // Parse as local date (YYYY-MM-DD format)
+      const [year, month, day] = value.split("-").map(Number)
+      const [toYear, toMonth, toDay] = customTo.split("-").map(Number)
+
+      onDateRangeChange({
+        from: new Date(year, month - 1, day),
+        to: new Date(toYear, toMonth - 1, toDay),
+      })
+    }
+  }
+
+  const handleCustomTo = (value: string) => {
+    setCustomTo(value)
+    setActivePreset(null)
+
+    if (customFrom && value) {
+      // Parse as local date (YYYY-MM-DD format)
+      const [fromYear, fromMonth, fromDay] = customFrom.split("-").map(Number)
+      const [year, month, day] = value.split("-").map(Number)
+
+      onDateRangeChange({
+        from: new Date(fromYear, fromMonth - 1, fromDay),
+        to: new Date(year, month - 1, day),
+      })
+    }
+  }
+
+  const handleClearFilter = () => {
+    setActivePreset(null)
+    setShowCustom(false)
+    setCustomFrom("")
+    setCustomTo("")
+    onDateRangeChange(null)
   }
 
   return (
     <Card className="p-6 bg-white dark:bg-slate-800 border-0 shadow-md mb-8">
       <div className="space-y-4">
-        <h3 className="font-semibold text-slate-900 dark:text-white">Filtrar por Fecha</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-slate-900 dark:text-white">Filtrar por Fecha</h3>
+          {(activePreset || customFrom || customTo) && (
+            <Button
+              onClick={handleClearFilter}
+              variant="ghost"
+              size="sm"
+              className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Limpiar filtro
+            </Button>
+          )}
+        </div>
 
         {/* Preset Buttons */}
         <div className="flex flex-wrap gap-2">
@@ -132,11 +170,16 @@ export function DateFilters({ onDateRangeChange }: DateFiltersProps) {
           <div className="flex gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Desde</label>
-              <Input type="date" onChange={(e) => handleCustomRange("from", e.target.value)} className="w-full" />
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => handleCustomFrom(e.target.value)}
+                className="w-full"
+              />
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hasta</label>
-              <Input type="date" onChange={(e) => handleCustomRange("to", e.target.value)} className="w-full" />
+              <Input type="date" value={customTo} onChange={(e) => handleCustomTo(e.target.value)} className="w-full" />
             </div>
           </div>
         )}
